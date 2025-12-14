@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String          @id @default(uuid()) @db.Uuid
+  email         String          @unique
+  passwordHash  String          @map("password_hash")
+  name          String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  zaloSessions  ZaloSession[]
+
+  @@map("users")
+}
+
+model ZaloSession {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  zaloUid     String?  @map("zalo_uid")
+  zaloName    String?  @map("zalo_name")
+  zaloAvatar  String?  @map("zalo_avatar") @db.Text
+  cookies     Json
+  imei        String
+  userAgent   String   @map("user_agent") @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  lastUsedAt  DateTime? @map("last_used_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("zalo_sessions")
+}

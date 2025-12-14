@@ -32,8 +32,8 @@ Web UI demo để test thư viện zalo-api-final sử dụng Next.js 16 và Pos
      ```
 
 3. **Chạy development server:**
-   ```bash
-   npm run dev
+```bash
+npm run dev
    ```
 
 4. **Mở trình duyệt:**

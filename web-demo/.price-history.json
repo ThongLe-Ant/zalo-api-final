@@ -1,0 +1,35 @@
+{
+  "prices": [
+    {
+      "buyPrice": 2309000,
+      "sellPrice": 2381000,
+      "unit": "Vnđ/Lượng",
+      "updateTime": "13/12/2025 10:00",
+      "lastDate": "13/12/2025",
+      "lastTime": "10:00",
+      "timestamp": 1765713674148,
+      "allProducts": []
+    },
+    {
+      "buyPrice": 2329000,
+      "sellPrice": 2401000,
+      "unit": "Vnđ/Lượng",
+      "updateTime": "13/12/2025 12:00",
+      "lastDate": "13/12/2025",
+      "lastTime": "12:00",
+      "timestamp": 1765717274148,
+      "allProducts": []
+    },
+    {
+      "buyPrice": 2329000,
+      "sellPrice": 2401000,
+      "unit": "Vnđ/Lượng",
+      "updateTime": "13/12/2025 12:00",
+      "lastDate": "13/12/2025",
+      "lastTime": "12:00",
+      "timestamp": 1765717274148,
+      "allProducts": []
+    }
+  ],
+  "maxHistory": 3
+}

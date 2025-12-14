@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer';
-import { PriceData, PriceChange } from './price-storage';
+import { PriceData, PriceChange, getLast3Prices } from './price-storage';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
@@ -21,7 +21,9 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
     updateTime, 
     lastDate, 
     lastTime,
-    allProducts 
+    allProducts,
+    buyPrice,
+    sellPrice
   } = priceData;
 
   // Parse thời gian
@@ -32,7 +34,267 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
   // Lấy đơn vị từ unit (Vnđ/Lượng -> LƯỢNG, Vnđ/Kg -> KG)
   const unitDisplay = unit.replace('Vnđ/', '').toUpperCase();
 
-  // Đọc logo và convert sang base64
+  // Chuẩn bị dữ liệu cho chart (3 giá gần nhất của BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG)
+  const priceHistory: number[] = [];
+  const timeLabels: string[] = [];
+  const targetProductName = 'BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG';
+  
+  // Lấy lịch sử giá (tối đa 3 giá gần nhất)
+  const last3Prices = await getLast3Prices();
+  
+  // Lấy giá của sản phẩm cụ thể từ mỗi lần cập nhật
+  const extractProductPrice = (priceData: PriceData): number | null => {
+    if (priceData.allProducts && priceData.allProducts.length > 0) {
+      const product = priceData.allProducts.find(p => 
+        p.productName.includes(targetProductName) || 
+        p.productName === targetProductName
+      );
+      return product ? product.buyPrice : null;
+    }
+    // Fallback: nếu không có allProducts, dùng buyPrice trực tiếp
+    return priceData.buyPrice || null;
+  };
+  
+  // Sử dụng dữ liệu từ lịch sử, nếu có ít nhất 2 giá thì hiển thị chart
+  if (last3Prices.length >= 2) {
+    // Sắp xếp theo timestamp
+    const sortedPrices = [...last3Prices].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    
+    // Lấy 3 giá cuối cùng
+    const pricesToShow = sortedPrices.slice(-3);
+    
+    // Điền dữ liệu vào chart (chỉ lấy giá của sản phẩm cụ thể)
+    pricesToShow.forEach((price) => {
+      const productPrice = extractProductPrice(price);
+      if (productPrice !== null) {
+        priceHistory.push(productPrice);
+        timeLabels.push(price.lastTime || price.updateTime?.split(' ')[1] || '');
+      }
+    });
+  } else if (last3Prices.length === 1) {
+    // Nếu chỉ có 1 giá trong lịch sử, thêm vào
+    const productPrice1 = extractProductPrice(last3Prices[0]);
+    if (productPrice1 !== null) {
+      priceHistory.push(productPrice1);
+      timeLabels.push(last3Prices[0].lastTime || last3Prices[0].updateTime?.split(' ')[1] || '');
+    }
+    
+    // Thêm giá hiện tại nếu khác
+    const currentProductPrice = extractProductPrice(priceData);
+    if (currentProductPrice !== null && currentProductPrice !== productPrice1) {
+      priceHistory.push(currentProductPrice);
+      timeLabels.push(priceData.lastTime || priceData.updateTime?.split(' ')[1] || '');
+    }
+  }
+  
+  // Nếu không có dữ liệu từ lịch sử, thử lấy từ giá hiện tại
+  if (priceHistory.length === 0) {
+    const currentProductPrice = extractProductPrice(priceData);
+    if (currentProductPrice !== null) {
+      priceHistory.push(currentProductPrice);
+      timeLabels.push(priceData.lastTime || priceData.updateTime?.split(' ')[1] || '');
+    }
+  }
+  
+  // Tính toán cho chart - dải dài, thấp (tăng height để có chỗ cho thời gian)
+  const chartWidth = 500;
+  const chartHeight = 70; // Tăng từ 50 lên 70 để có chỗ cho thời gian
+  const chartPadding = 10;
+  const chartInnerWidth = chartWidth - chartPadding * 2;
+  const chartInnerHeight = chartHeight - chartPadding * 2 - 15; // Trừ thêm 15px cho phần thời gian
+  
+  let chartHTML = '';
+  // Hiển thị chart nếu có ít nhất 2 giá
+  if (priceHistory.length >= 2) {
+    try {
+      // Tính phần trăm thay đổi so với giá đầu tiên
+      const firstPrice = priceHistory[0];
+      if (!firstPrice || firstPrice === 0) {
+        throw new Error('Invalid first price');
+      }
+      
+      const priceChanges = priceHistory.map(p => {
+        if (!p || p === 0) return 0;
+        return ((p - firstPrice) / firstPrice) * 100;
+      });
+      
+      // Tìm min/max phần trăm thay đổi
+      const maxChange = Math.max(...priceChanges);
+      const minChange = Math.min(...priceChanges);
+      const changeRange = maxChange - minChange;
+      
+      // Nếu range quá nhỏ (< 0.1%), mở rộng range để hiển thị rõ hơn
+      // Tăng hệ số mở rộng để làm nổi bật biến động nhỏ
+      const expansionFactor = changeRange < 0.05 ? 3 : changeRange < 0.1 ? 2.5 : 1.5;
+      const displayRange = changeRange < 0.1 ? Math.max(changeRange * expansionFactor, 0.3) : Math.max(changeRange * expansionFactor, 0.2);
+      const centerChange = (maxChange + minChange) / 2;
+      const displayMin = centerChange - displayRange / 2;
+      const displayMax = centerChange + displayRange / 2;
+      
+      // Kiểm tra tính hợp lệ của displayMin và displayMax
+      if (isNaN(displayMin) || isNaN(displayMax) || !isFinite(displayMin) || !isFinite(displayMax)) {
+        throw new Error('Invalid display range');
+      }
+    
+      // Tạo SVG path cho line chart - scale theo phần trăm thay đổi
+      const points = priceHistory.map((price, index) => {
+        const x = chartPadding + (index / (priceHistory.length - 1)) * chartInnerWidth;
+        const changePercent = priceChanges[index];
+        // Scale từ displayMin đến displayMax
+        const range = displayMax - displayMin;
+        const normalizedChange = range !== 0 ? (changePercent - displayMin) / range : 0.5;
+        const y = chartPadding + chartInnerHeight - (normalizedChange * chartInnerHeight);
+        return { x, y, price, changePercent };
+      });
+    
+      let svgPath = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 1; i < points.length; i++) {
+        svgPath += ` L ${points[i].x} ${points[i].y}`;
+      }
+      
+      // Format giá đầy đủ với dấu phẩy (ví dụ: 2,329,000)
+      const formatPriceSimple = (p: number) => {
+        if (!p || p === 0) return '0';
+        return formatNumber(p);
+      };
+      
+      // Xác định xu hướng tổng thể (tăng/giảm so với giá đầu)
+      const lastPrice = priceHistory[priceHistory.length - 1];
+      const priceDiff = lastPrice - firstPrice;
+      const priceDiffPercent = (priceDiff / firstPrice) * 100;
+      
+      // Nếu biến động < 0.01% thì coi như không đổi
+      const isStable = Math.abs(priceDiffPercent) < 0.01;
+      const isIncreasing = priceDiff > 0 && !isStable;
+      
+      // Màu sắc: xanh nếu tăng, đỏ nếu giảm, xám nếu không đổi
+      const overallLineColor = isStable ? '#6c757d' : (isIncreasing ? '#2d8659' : '#dc3545');
+      
+      // Text chú thích xu hướng
+      let trendText = '';
+      let trendColor = '#ffffff';
+      if (isStable) {
+        trendText = 'Giá ổn định';
+        trendColor = '#d4af37'; // Vàng
+      } else if (isIncreasing) {
+        trendText = 'Giá tăng';
+        trendColor = '#90ee90'; // Xanh lá sáng
+      } else {
+        trendText = 'Giá giảm';
+        trendColor = '#ff6b6b'; // Đỏ sáng
+      }
+      
+      // Tạo path cho area fill (gradient)
+      const areaPath = `${svgPath} L ${points[points.length - 1].x} ${chartHeight - chartPadding} L ${points[0].x} ${chartHeight - chartPadding} Z`;
+    
+      chartHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center;">
+          <div class="chart-container">
+          <svg class="chart-svg" viewBox="0 0 ${chartWidth} ${chartHeight}" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
+            <defs>
+              <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:${overallLineColor};stop-opacity:0.3" />
+                <stop offset="100%" style="stop-color:${overallLineColor};stop-opacity:0.05" />
+              </linearGradient>
+            </defs>
+            
+            <!-- Background grid - trong suốt để thấy nền xanh dương -->
+            <rect x="${chartPadding}" y="${chartPadding}" width="${chartInnerWidth}" height="${chartInnerHeight}" fill="rgba(255,255,255,0.1)"/>
+            
+            <!-- Grid lines (horizontal) - màu sáng hơn để thấy trên nền xanh dương -->
+            ${Array.from({ length: 3 }, (_, i) => {
+              const y = chartPadding + (i * chartInnerHeight / 2);
+              return `<line x1="${chartPadding}" y1="${y}" x2="${chartWidth - chartPadding}" y2="${y}" stroke="rgba(255,255,255,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+            }).join('')}
+            
+            <!-- Area fill - trong suốt hơn -->
+            <path d="${areaPath}" fill="url(#areaGradient)"/>
+            
+            <!-- Price line (thicker, smoother) - màu theo xu hướng tổng thể, sáng hơn -->
+            <path d="${svgPath}" fill="none" stroke="${overallLineColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <!-- Y-axis labels (phần trăm thay đổi) - ẩn đi để tiết kiệm không gian -->
+            
+            <!-- Baseline (đường giá đầu tiên) để dễ so sánh - màu sáng hơn -->
+            <line x1="${chartPadding}" y1="${points[0].y}" x2="${chartWidth - chartPadding}" y2="${points[0].y}" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-dasharray="5,5"/>
+            
+            <!-- Data points (larger, with shadow) - màu theo từng điểm -->
+            ${points.map((point, index) => {
+              const isLastPoint = index === points.length - 1; // Điểm cuối cùng (giá hiện tại)
+              
+              // Màu cho từng điểm: xanh nếu tăng, đỏ nếu giảm, xám nếu không đổi
+              // Điểm cuối cùng dùng màu sáng hơn (vàng/trắng) để nổi bật
+              let pointColor = overallLineColor;
+              let textColor = '#ffffff'; // Màu text trắng để nổi bật trên nền xanh dương
+              let bgColor = 'rgba(30, 60, 114, 0.9)'; // Nền xanh dương đậm với opacity
+              
+              if (index > 0) {
+                const prevPrice = priceHistory[index - 1];
+                const diff = point.price - prevPrice;
+                const diffPercent = (diff / prevPrice) * 100;
+                // Nếu biến động < 0.01% thì coi như không đổi
+                if (Math.abs(diffPercent) < 0.01) {
+                  pointColor = '#d4af37'; // Vàng cho không đổi
+                } else {
+                  pointColor = diff > 0 ? '#90ee90' : '#ff6b6b'; // Xanh lá sáng / Đỏ sáng
+                }
+              } else {
+                pointColor = '#d4af37'; // Vàng cho điểm đầu
+              }
+              
+              // Điểm cuối cùng (giá hiện tại) - highlight đặc biệt
+              if (isLastPoint) {
+                pointColor = '#ffd700'; // Vàng đậm
+                textColor = '#1e3c72'; // Xanh dương đậm cho text
+                bgColor = 'rgba(255, 215, 0, 0.95)'; // Nền vàng đậm
+              }
+              
+              const priceText = formatPriceSimple(point.price);
+              
+              // Tính toán width của background box dựa trên độ dài text
+              // Ước tính: mỗi ký tự ~7-8px với font-size 13-15
+              const estimatedTextWidth = priceText.length * (isLastPoint ? 8 : 7);
+              const padding = 12; // Padding trái và phải
+              const bgWidth = Math.max(estimatedTextWidth + padding * 2, isLastPoint ? 120 : 100);
+              const bgHeight = isLastPoint ? 20 : 16;
+              
+              // Kích thước và style khác nhau cho điểm cuối cùng
+              const circleRadius = isLastPoint ? 8 : 6.5;
+              const circleStrokeWidth = isLastPoint ? 3.5 : 2.5;
+              const textFontSize = isLastPoint ? 15 : 13;
+              
+              return `
+              <!-- Background cho text để dễ đọc - nổi bật hơn cho điểm cuối -->
+              <rect x="${point.x - bgWidth/2}" y="${point.y - bgHeight - 2}" width="${bgWidth}" height="${bgHeight}" fill="${bgColor}" stroke="${pointColor}" stroke-width="${isLastPoint ? 2 : 1}" rx="4" opacity="${isLastPoint ? 1 : 0.96}"/>
+              
+              <!-- Data point circle - lớn hơn cho điểm cuối -->
+              <circle cx="${point.x}" cy="${point.y}" r="${circleRadius + 1}" fill="rgba(255,255,255,0.3)" stroke="none"/>
+              <circle cx="${point.x}" cy="${point.y}" r="${circleRadius}" fill="#ffffff" stroke="${pointColor}" stroke-width="${circleStrokeWidth}"/>
+              <circle cx="${point.x}" cy="${point.y}" r="${circleRadius - 2}" fill="${pointColor}"/>
+              
+              <!-- Giá trị giá - lớn và rõ, căn giữa trong background box -->
+              <text x="${point.x}" y="${point.y - bgHeight/2 + 1}" font-size="${textFontSize}" font-weight="900" fill="${textColor}" text-anchor="middle">${priceText}</text>
+              
+              <!-- Thời gian - màu trắng để nổi bật trên nền xanh dương -->
+              <text x="${point.x}" y="${chartHeight - 5}" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle" opacity="0.95">${timeLabels[index] || ''}</text>
+            `;
+            }).join('')}
+          </svg>
+          </div>
+          <!-- Chú thích xu hướng - căn giữa dưới chart -->
+          <div style="text-align: center; margin-top: 4px; width: 100%;">
+            <span style="font-size: 9px; font-weight: 600; color: ${trendColor}; opacity: 0.95;">${trendText}</span>
+          </div>
+        </div>
+    `;
+    } catch (error) {
+      console.error('Error generating chart:', error);
+      // Nếu có lỗi, không hiển thị chart
+      chartHTML = '';
+    }
+  }
+
+  // Đọc logo Vinh Hoa và convert sang base64
   let logoBase64 = '';
   try {
     const logoPath = join(process.cwd(), 'public', 'vinh_hoa_logo3.png');
@@ -42,6 +304,17 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
     console.error('Error reading logo:', error);
     // Fallback: sử dụng logo box CSS nếu không đọc được file
     logoBase64 = '';
+  }
+
+  // Đọc logo Phú Quý và convert sang base64
+  let phuQuyLogoBase64 = '';
+  try {
+    const phuQuyLogoPath = join(process.cwd(), 'public', 'phu_quy_logo.png');
+    const phuQuyLogoBuffer = await readFile(phuQuyLogoPath);
+    phuQuyLogoBase64 = `data:image/png;base64,${phuQuyLogoBuffer.toString('base64')}`;
+  } catch (error) {
+    console.error('Error reading Phu Quy logo:', error);
+    phuQuyLogoBase64 = '';
   }
 
   let tableRows = '';
@@ -57,22 +330,22 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
     }, {} as Record<string, typeof allProducts>);
 
     Object.entries(productsByCategory).forEach(([categoryName, products]) => {
-      // Category header row
+      // Category header row - phân biệt màu theo category
+      const categoryClass = categoryName.includes('PHÚ QUÝ') ? 'category-header-phuquy' : 'category-header-khac';
       tableRows += `
-        <tr class="category-header">
+        <tr class="category-header ${categoryClass}">
           <td colspan="4" class="category-cell">${categoryName}</td>
         </tr>
       `;
 
       // Product rows
       products.forEach((product) => {
-        const isSelected = product.productName === productName;
         const buyPriceFormatted = formatNumber(product.buyPrice);
         const sellPriceFormatted = product.sellPrice > 0 ? formatNumber(product.sellPrice) : '-';
         const productUnit = product.unit || unitDisplay;
 
         tableRows += `
-          <tr class="${isSelected ? 'selected' : ''}">
+          <tr>
             <td>${product.productName}</td>
             <td class="unit-cell">${productUnit}</td>
             <td class="price-buy">${buyPriceFormatted}</td>
@@ -94,7 +367,7 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
         body{
           margin:0;
           font-family:"Segoe UI",Roboto,Arial,sans-serif;
-          background:#efefef;
+          background:#f5f7fa;
           color:#1a1a1a;
         }
         .wrapper{
@@ -104,14 +377,14 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           box-shadow:0 8px 24px rgba(0,0,0,.10);
         }
 
-        /* ================= HEADER – CHUỖI VÀNG LỚN ================= */
+        /* ================= HEADER – XANH DƯƠNG ================= */
         .header{
           display:grid;
-          grid-template-columns:170px 1fr 190px;
+          grid-template-columns:170px 1fr 170px;
           align-items:center;
           padding:14px 18px 15px;
-          background:linear-gradient(135deg,#fff9e6,#efd07a);
-          border-bottom:4px solid #8b1515;
+          background:#1e3c72;
+          border-bottom:4px solid #d4af37;
         }
         .header-left{
           display:flex;
@@ -127,29 +400,80 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           font-size:13px;
           font-weight:800;
           letter-spacing:.6px;
-          color:#8b1515;
+          color:#d4af37;
           text-align:center;
         }
         .header-center{
           text-align:center;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+        }
+        .header-center .title{
           font-size:24px;
           font-weight:900;
           letter-spacing:1.2px;
           text-transform:uppercase;
-          color:#1a1a1a;
+          color:#ffffff;
         }
-        .header-right{
-          text-align:right;
+        .header-center .time-info{
+          margin-top:2px;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
         }
-        .header-right .time{
-          font-size:32px;
-          font-weight:900;
-          color:#9b1111;
+        .header-center .time{
+          font-size:18px;
+          font-weight:700;
+          color:#d4af37;
           line-height:1;
         }
-        .header-right .date{
-          font-size:12px;
-          color:#333;
+        .header-center .date-label{
+          font-size:9px;
+          color:#b0c4de;
+          margin-top:1px;
+        }
+        .header-center .date{
+          font-size:9px;
+          color:#b0c4de;
+        }
+        .header-right{
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+        }
+        .header-right img{
+          height:46px;
+          display:block;
+          margin-bottom:4px;
+        }
+        .header-right .brand{
+          font-size:13px;
+          font-weight:800;
+          letter-spacing:.6px;
+          color:#d4af37;
+          text-align:center;
+        }
+        .chart-section{
+          width:100%;
+          display:flex;
+          justify-content:center;
+          padding:8px 0;
+          background:#1e3c72;
+        }
+        .chart-container{
+          width:500px;
+          height:70px;
+          background:transparent;
+          border-radius:4px;
+          padding:4px;
+          box-shadow:none;
+          border:none;
+        }
+        .chart-svg{
+          width:100%;
+          height:100%;
+          overflow:visible;
         }
 
         /* ================= TABLE ================= */
@@ -159,7 +483,7 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
         }
 
         thead th{
-          background:#8b1515;
+          background:#2d8659;
           color:#ffffff;
           padding:11px 10px;
           font-size:14px;
@@ -180,10 +504,7 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           border-bottom:1px solid rgba(0,0,0,.08);
         }
         tbody tr:nth-child(even){
-          background:#fffaf0;
-        }
-        tbody tr.selected{
-          background:#fff9e6;
+          background:#f0f7fa;
         }
 
         tbody td{
@@ -196,7 +517,13 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           font-weight:600;
         }
         .category-header{
-          background:#f0f0f0;
+          background:#e8f4f0;
+        }
+        .category-header-phuquy{
+          background:#d4e4f4;
+        }
+        .category-header-khac{
+          background:#e8f4f0;
         }
         .category-cell{
           font-weight:bold;
@@ -211,12 +538,12 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           font-size:14px;
         }
         .price-buy{
-          color:#8b1515;
+          color:#dc3545;
           font-weight:900;
           text-align:center;
         }
         .price-sell{
-          color:#1f6f43;
+          color:#2d8659;
           font-weight:900;
           text-align:center;
         }
@@ -224,19 +551,13 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
         /* ================= FOOTER ================= */
         .footer{
           display:flex;
-          justify-content:space-between;
+          justify-content:center;
           align-items:center;
           padding:10px 16px 14px;
           font-size:12px;
-          color:#333;
-          border-top:1px solid #e6dcc0;
-          background:#fffdf6;
-        }
-        .footer .line{
-          height:1px;
-          flex:1;
-          background:linear-gradient(to right,#ddd,#aaa,#ddd);
-          margin:0 10px;
+          color:#666;
+          border-top:2px solid #d4af37;
+          background:#f8f9fa;
         }
       </style>
     </head>
@@ -250,12 +571,25 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
             ${logoBase64 ? `<img src="${logoBase64}" alt="Logo">` : ''}
             <div class="brand">VÀNG BẠC VINH HOA</div>
           </div>
-          <div class="header-center">GIÁ BẠC HÔM NAY</div>
+          <div class="header-center">
+            <div class="title">GIÁ BẠC HÔM NAY</div>
+            <div class="time-info">
+              <div class="time">${updateTimeOnly}</div>
+              <div class="date-label">Cập nhật lần cuối</div>
+              <div class="date">${updateDate}</div>
+            </div>
+          </div>
           <div class="header-right">
-            <div class="time">${updateTimeOnly}</div>
-            <div class="date">Cập nhật lần cuối<br>${updateDate}</div>
+            ${phuQuyLogoBase64 ? `<img src="${phuQuyLogoBase64}" alt="Logo Phú Quý">` : ''}
+            <div class="brand">VÀNG BẠC PHÚ QUÝ</div>
           </div>
         </div>
+        
+        ${chartHTML ? `
+        <div class="chart-section">
+          ${chartHTML}
+        </div>
+        ` : ''}
 
         <!-- TABLE -->
         <table>
@@ -275,8 +609,6 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
         <!-- FOOTER -->
         <div class="footer">
           <span>Đơn giá đã bao gồm thuế GTGT</span>
-          <div class="line"></div>
-          <span>Niêm yết toàn hệ thống</span>
         </div>
 
       </div>

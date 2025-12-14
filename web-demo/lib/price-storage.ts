@@ -35,13 +35,31 @@ export interface PriceChange {
 }
 
 const STORAGE_FILE = path.join(process.cwd(), '.price-storage.json');
+const HISTORY_FILE = path.join(process.cwd(), '.price-history.json');
+
+interface PriceHistory {
+  prices: PriceData[];
+  maxHistory: number; // Tối đa số giá lưu trữ
+}
 
 /**
  * Lưu giá vào file
  */
 export async function savePrice(priceData: PriceData): Promise<void> {
   try {
+    // Lưu giá hiện tại
     await fs.writeFile(STORAGE_FILE, JSON.stringify(priceData, null, 2), 'utf-8');
+    
+    // Lưu vào lịch sử (tối đa 3 giá gần nhất)
+    const history = await loadPriceHistory();
+    history.prices.push(priceData);
+    
+    // Chỉ giữ lại 3 giá gần nhất
+    if (history.prices.length > history.maxHistory) {
+      history.prices = history.prices.slice(-history.maxHistory);
+    }
+    
+    await fs.writeFile(HISTORY_FILE, JSON.stringify(history, null, 2), 'utf-8');
   } catch (error) {
     console.error('Error saving price:', error);
     throw error;
@@ -63,6 +81,31 @@ export async function loadPrice(): Promise<PriceData | null> {
     console.error('Error loading price:', error);
     return null;
   }
+}
+
+/**
+ * Đọc lịch sử giá
+ */
+export async function loadPriceHistory(): Promise<PriceHistory> {
+  try {
+    const data = await fs.readFile(HISTORY_FILE, 'utf-8');
+    return JSON.parse(data) as PriceHistory;
+  } catch (error) {
+    // File không tồn tại, tạo mới
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return { prices: [], maxHistory: 3 };
+    }
+    console.error('Error loading price history:', error);
+    return { prices: [], maxHistory: 3 };
+  }
+}
+
+/**
+ * Lấy 3 giá gần nhất từ lịch sử
+ */
+export async function getLast3Prices(): Promise<PriceData[]> {
+  const history = await loadPriceHistory();
+  return history.prices.slice(-3); // Lấy 3 giá cuối cùng
 }
 
 /**

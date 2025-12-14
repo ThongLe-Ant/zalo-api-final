@@ -22,27 +22,64 @@ export default function GroupSelector({ sessionId }: GroupSelectorProps) {
   const [error, setError] = useState('');
 
   const loadGroups = async () => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      setError('Chưa có session ID. Vui lòng đăng nhập Zalo trước.');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
+      // First, verify session is ready
+      const statusResponse = await fetch(`/api/test/login-qr?sessionId=${sessionId}`);
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        if (statusData.status !== 'confirmed' || !statusData.hasInstance) {
+          setError('Session chưa sẵn sàng. Vui lòng đợi đăng nhập hoàn tất hoặc đăng nhập lại.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const response = await fetch(`/api/test/groups?sessionId=${sessionId}`);
       
       if (!response.ok) {
         let errorMsg = 'Không thể lấy danh sách nhóm';
+        let errorData: any = {};
+        
         try {
-          const data = await response.json();
-          errorMsg = data.error || errorMsg;
-          console.error('API Error:', data);
-          setError(`${errorMsg}${data.debug ? ` (Debug: ${JSON.stringify(data.debug)})` : ''}`);
+          const text = await response.text();
+          if (text) {
+            errorData = JSON.parse(text);
+            errorMsg = errorData.error || errorData.message || errorMsg;
+          }
         } catch (parseError) {
           // Nếu không parse được JSON, dùng status text
           errorMsg = response.statusText || `HTTP ${response.status}`;
           console.error('API Error (non-JSON):', errorMsg);
-          setError(errorMsg);
         }
+        
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMsg,
+          debug: errorData.debug,
+          fullData: errorData
+        });
+        
+        // Hiển thị error message với debug info nếu có
+        let displayError = errorMsg;
+        if (errorData.debug) {
+          if (errorData.debug.availableSessions) {
+            displayError += `\nCác session có sẵn: ${errorData.debug.availableSessions.join(', ') || 'Không có'}`;
+          }
+          if (errorData.debug.sessionId) {
+            displayError += `\nSession ID đang tìm: ${errorData.debug.sessionId}`;
+          }
+        }
+        
+        setError(displayError);
         return;
       }
 

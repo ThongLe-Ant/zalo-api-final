@@ -154,6 +154,63 @@ export default function PriceMonitor({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const createTestChartData = async () => {
+    setLoading(true);
+    try {
+      // Tạo dữ liệu test
+      const createResponse = await fetch('/api/price/test-chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create-test-data' }),
+      });
+
+      const createData = await createResponse.json();
+
+      if (!createResponse.ok) {
+        toast.error(createData.error || 'Không thể tạo dữ liệu test');
+        return;
+      }
+
+      toast.success(`✅ Đã tạo ${createData.prices.length} giá test thành công!`);
+
+      // Preview chart
+      const previewResponse = await fetch('/api/price/test-chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'preview' }),
+      });
+
+      const previewData = await previewResponse.json();
+
+      if (!previewResponse.ok) {
+        toast.error(previewData.error || 'Không thể preview chart');
+        return;
+      }
+
+      // Cập nhật currentPrice để preview hiển thị
+      if (previewData.currentPrice) {
+        // Tạo PriceData từ preview data
+        const testPriceData: PriceData = {
+          buyPrice: previewData.currentPrice.buyPrice,
+          sellPrice: previewData.currentPrice.buyPrice + 72000, // Giả sử spread
+          unit: 'Vnđ/Lượng',
+          updateTime: `${previewData.currentPrice.lastTime || '12:00'}`,
+          lastDate: '13/12/2025',
+          lastTime: previewData.currentPrice.lastTime || '12:00',
+          allProducts: [],
+        };
+        setCurrentPrice(testPriceData);
+        setPriceChange({ hasChanged: true });
+        toast.success(`📊 Chart đã hiển thị với ${previewData.historyCount} giá!`);
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi tạo dữ liệu test');
+      console.error('Test chart error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const checkNotificationThreshold = (change: PriceChange): boolean => {
     if (minChangePercent === 0) return true; // Gửi mọi thay đổi
     
@@ -238,6 +295,14 @@ export default function PriceMonitor({ sessionId }: { sessionId: string }) {
             title="Gửi tin nhắn với giá hiện tại vào nhóm Zalo để test"
           >
             📤 Gửi tin ngay
+          </button>
+          <button
+            onClick={createTestChartData}
+            disabled={loading}
+            className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
+            title="Tạo dữ liệu test với 3 giá gần nhất để review chart"
+          >
+            📊 Test Chart
           </button>
         </div>
       </div>

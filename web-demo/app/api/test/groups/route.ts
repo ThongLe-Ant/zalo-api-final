@@ -20,17 +20,23 @@ export async function GET(request: NextRequest) {
     // Get Zalo instance
     const api = getZaloInstance(sessionId);
     
+    const availableSessions = Array.from((global as any).zaloInstances?.keys() || []);
+    
     console.log('Session ID:', sessionId);
     console.log('API instance found:', !!api);
-    console.log('Available sessions:', Array.from((global as any).zaloInstances?.keys() || []));
+    console.log('Available sessions:', availableSessions);
+    console.log('Global zaloInstances type:', typeof (global as any).zaloInstances);
+    console.log('Global zaloInstances size:', (global as any).zaloInstances?.size || 0);
 
     if (!api) {
       return NextResponse.json(
         { 
-          error: 'Zalo session not found. Please login with QR code first.',
+          error: 'Zalo session not found. Vui lòng đăng nhập bằng QR code trước.',
           debug: {
             sessionId,
-            availableSessions: Array.from((global as any).zaloInstances?.keys() || [])
+            availableSessions: availableSessions,
+            hasGlobalInstances: !!(global as any).zaloInstances,
+            globalSize: (global as any).zaloInstances?.size || 0
           }
         },
         { status: 404 }
@@ -93,10 +99,16 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Get groups error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
     return NextResponse.json(
       { 
         error: 'Failed to get groups: ' + errorMessage,
-        details: error instanceof Error ? error.stack : undefined
+        debug: {
+          message: errorMessage,
+          stack: errorStack,
+          type: error instanceof Error ? error.constructor.name : typeof error
+        }
       },
       { status: 500 }
     );

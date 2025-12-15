@@ -34,56 +34,228 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
   // Lấy đơn vị từ unit (Vnđ/Lượng -> LƯỢNG, Vnđ/Kg -> KG)
   const unitDisplay = unit.replace('Vnđ/', '').toUpperCase();
 
-  // Chuẩn bị dữ liệu cho chart (3 giá gần nhất của BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG)
+  // Chuẩn bị dữ liệu cho chart (5 giá gần nhất của BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG)
   const priceHistory: number[] = [];
   const timeLabels: string[] = [];
   const targetProductName = 'BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG';
   
-  // Lấy lịch sử giá (tối đa 3 giá gần nhất)
+  // Lấy lịch sử giá (tối đa 5 giá gần nhất)
   const last3Prices = await getLast3Prices();
   
   // Lấy giá của sản phẩm cụ thể từ mỗi lần cập nhật
   const extractProductPrice = (priceData: PriceData): number | null => {
     if (priceData.allProducts && priceData.allProducts.length > 0) {
-      const product = priceData.allProducts.find(p => 
-        p.productName.includes(targetProductName) || 
-        p.productName === targetProductName
-      );
-      return product ? product.buyPrice : null;
+      const product = priceData.allProducts.find(p => {
+        const name = p.productName || '';
+        return name.includes(targetProductName) || 
+               name === targetProductName ||
+               targetProductName.includes(name);
+      });
+      if (product) {
+        return product.buyPrice;
+      }
+      // Nếu không tìm thấy, log để debug
+      console.warn(`[Chart] Không tìm thấy sản phẩm "${targetProductName}" trong allProducts:`, 
+        priceData.allProducts.map(p => p.productName));
     }
     // Fallback: nếu không có allProducts, dùng buyPrice trực tiếp
-    return priceData.buyPrice || null;
+    if (priceData.buyPrice) {
+      console.log(`[Chart] Fallback: dùng buyPrice trực tiếp = ${priceData.buyPrice}`);
+      return priceData.buyPrice;
+    }
+    return null;
   };
   
   // Sử dụng dữ liệu từ lịch sử, nếu có ít nhất 2 giá thì hiển thị chart
   if (last3Prices.length >= 2) {
-    // Sắp xếp theo timestamp
-    const sortedPrices = [...last3Prices].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    // Sắp xếp theo timestamp (tăng dần - giá cũ nhất trước)
+    const sortedPrices = [...last3Prices].sort((a, b) => {
+      const timestampA = a.timestamp || (a.updateTime ? new Date(a.updateTime).getTime() : 0);
+      const timestampB = b.timestamp || (b.updateTime ? new Date(b.updateTime).getTime() : 0);
+      return timestampA - timestampB;
+    });
     
-    // Lấy 3 giá cuối cùng
-    const pricesToShow = sortedPrices.slice(-3);
+    console.log(`[Chart] Sorted prices by timestamp:`, sortedPrices.map((p, i) => ({
+      index: i + 1,
+      timestamp: p.timestamp,
+      updateTime: p.updateTime,
+      lastTime: p.lastTime,
+    })));
+    
+    // Lấy 5 giá cuối cùng (hoặc tất cả nếu ít hơn 5)
+    const pricesToShow = sortedPrices.slice(-5);
     
     // Điền dữ liệu vào chart (chỉ lấy giá của sản phẩm cụ thể)
-    pricesToShow.forEach((price) => {
+    // QUAN TRỌNG: Giữ nguyên thứ tự thời gian (cũ -> mới)
+    const chartData: Array<{ price: number; time: string; timestamp: number }> = [];
+    
+    pricesToShow.forEach((price, index) => {
       const productPrice = extractProductPrice(price);
+      
+      // Format thời gian: bao gồm ngày/tháng và giờ
+      let timeLabel = '';
+      
+      // Lấy ngày và giờ
+      let datePart = '';
+      let timePart = '';
+      
+      if (price.lastDate && price.lastTime) {
+        // Có lastDate và lastTime: "14/12/2025" và "12:00"
+        datePart = price.lastDate.split('/').slice(0, 2).join('/'); // Lấy "14/12" từ "14/12/2025"
+        timePart = price.lastTime;
+      } else if (price.updateTime) {
+        // updateTime có thể là "13/12/2025 12:00"
+        const parts = price.updateTime.split(' ');
+        if (parts.length >= 2) {
+          const dateStr = parts[0]; // "13/12/2025"
+          datePart = dateStr.split('/').slice(0, 2).join('/'); // "13/12"
+          timePart = parts[1]; // "12:00"
+        } else {
+          // Chỉ có giờ
+          timePart = price.updateTime;
+        }
+      } else if (price.lastTime) {
+        // Chỉ có lastTime
+        timePart = price.lastTime;
+      }
+      
+      // Format label: "14/12 12:00" hoặc chỉ "12:00" nếu không có ngày
+      if (datePart && timePart) {
+        timeLabel = `${datePart} ${timePart}`;
+      } else if (timePart) {
+        timeLabel = timePart;
+      }
+      
+      const timestamp = price.timestamp || (price.updateTime ? new Date(price.updateTime).getTime() : 0);
+      
+      console.log(`[Chart] Price ${index + 1}/${pricesToShow.length}: time=${timeLabel}, timestamp=${timestamp}, price=${productPrice}, hasAllProducts=${!!price.allProducts}`);
+      
       if (productPrice !== null) {
-        priceHistory.push(productPrice);
-        timeLabels.push(price.lastTime || price.updateTime?.split(' ')[1] || '');
+        chartData.push({
+          price: productPrice,
+          time: timeLabel,
+          timestamp: timestamp,
+        });
+      } else {
+        console.warn(`[Chart] Failed to extract price for index ${index}:`, {
+          hasAllProducts: !!price.allProducts,
+          allProductsLength: price.allProducts?.length || 0,
+          buyPrice: price.buyPrice,
+          updateTime: price.updateTime,
+          lastTime: price.lastTime,
+        });
       }
     });
+    
+    // Đảm bảo sắp xếp lại theo timestamp (phòng trường hợp có giá bị skip)
+    chartData.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Push vào priceHistory và timeLabels theo thứ tự đã sắp xếp
+    chartData.forEach(data => {
+      priceHistory.push(data.price);
+      timeLabels.push(data.time);
+    });
+    
+    console.log(`[Chart] Final order - Prices:`, priceHistory, `Times:`, timeLabels);
+    
+    // Nếu chưa đủ 5 giá và có giá hiện tại, thêm giá hiện tại vào
+    if (priceHistory.length < 5) {
+      const currentProductPrice = extractProductPrice(priceData);
+      if (currentProductPrice !== null) {
+        // Kiểm tra xem giá hiện tại đã có trong priceHistory chưa
+        const lastPriceInHistory = priceHistory[priceHistory.length - 1];
+        if (currentProductPrice !== lastPriceInHistory) {
+          // Format thời gian cho giá hiện tại với ngày/tháng
+          let currentTimeLabel = '';
+          if (priceData.lastDate && priceData.lastTime) {
+            const datePart = priceData.lastDate.split('/').slice(0, 2).join('/');
+            currentTimeLabel = `${datePart} ${priceData.lastTime}`;
+          } else if (priceData.updateTime) {
+            const parts = priceData.updateTime.split(' ');
+            if (parts.length >= 2) {
+              const datePart = parts[0].split('/').slice(0, 2).join('/');
+              currentTimeLabel = `${datePart} ${parts[1]}`;
+            } else {
+              currentTimeLabel = priceData.updateTime;
+            }
+          } else {
+            currentTimeLabel = priceData.lastTime || '';
+          }
+          
+          priceHistory.push(currentProductPrice);
+          timeLabels.push(currentTimeLabel);
+        }
+      }
+    }
+    
+    // Debug: log số lượng giá đã lấy
+    console.log(`[Chart] Total prices in history: ${last3Prices.length}, Prices to show: ${pricesToShow.length}, Extracted: ${priceHistory.length} prices`);
+    console.log(`[Chart] Price history array:`, priceHistory);
+    console.log(`[Chart] Time labels array (should be in chronological order):`, timeLabels);
+    
+    // Verify thứ tự thời gian
+    if (timeLabels.length > 1) {
+      const timeValues = timeLabels.map(t => {
+        if (!t) return 0;
+        const parts = t.split(':');
+        if (parts.length === 2) {
+          return parseInt(parts[0]) * 60 + parseInt(parts[1]); // Convert to minutes
+        }
+        return 0;
+      });
+      const isAscending = timeValues.every((val, i) => i === 0 || val >= timeValues[i - 1]);
+      if (!isAscending) {
+        console.warn(`[Chart] WARNING: Time labels are NOT in ascending order!`, timeLabels);
+      } else {
+        console.log(`[Chart] ✓ Time labels are in ascending order`);
+      }
+    }
   } else if (last3Prices.length === 1) {
     // Nếu chỉ có 1 giá trong lịch sử, thêm vào
     const productPrice1 = extractProductPrice(last3Prices[0]);
     if (productPrice1 !== null) {
+      const price = last3Prices[0];
+      let timeLabel = '';
+      if (price.lastDate && price.lastTime) {
+        const datePart = price.lastDate.split('/').slice(0, 2).join('/');
+        timeLabel = `${datePart} ${price.lastTime}`;
+      } else if (price.updateTime) {
+        const parts = price.updateTime.split(' ');
+        if (parts.length >= 2) {
+          const datePart = parts[0].split('/').slice(0, 2).join('/');
+          timeLabel = `${datePart} ${parts[1]}`;
+        } else {
+          timeLabel = price.updateTime;
+        }
+      } else {
+        timeLabel = price.lastTime || '';
+      }
+      
       priceHistory.push(productPrice1);
-      timeLabels.push(last3Prices[0].lastTime || last3Prices[0].updateTime?.split(' ')[1] || '');
+      timeLabels.push(timeLabel);
     }
     
     // Thêm giá hiện tại nếu khác
     const currentProductPrice = extractProductPrice(priceData);
     if (currentProductPrice !== null && currentProductPrice !== productPrice1) {
+      let currentTimeLabel = '';
+      if (priceData.lastDate && priceData.lastTime) {
+        const datePart = priceData.lastDate.split('/').slice(0, 2).join('/');
+        currentTimeLabel = `${datePart} ${priceData.lastTime}`;
+      } else if (priceData.updateTime) {
+        const parts = priceData.updateTime.split(' ');
+        if (parts.length >= 2) {
+          const datePart = parts[0].split('/').slice(0, 2).join('/');
+          currentTimeLabel = `${datePart} ${parts[1]}`;
+        } else {
+          currentTimeLabel = priceData.updateTime;
+        }
+      } else {
+        currentTimeLabel = priceData.lastTime || '';
+      }
+      
       priceHistory.push(currentProductPrice);
-      timeLabels.push(priceData.lastTime || priceData.updateTime?.split(' ')[1] || '');
+      timeLabels.push(currentTimeLabel);
     }
   }
   
@@ -91,15 +263,31 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
   if (priceHistory.length === 0) {
     const currentProductPrice = extractProductPrice(priceData);
     if (currentProductPrice !== null) {
+      let currentTimeLabel = '';
+      if (priceData.lastDate && priceData.lastTime) {
+        const datePart = priceData.lastDate.split('/').slice(0, 2).join('/');
+        currentTimeLabel = `${datePart} ${priceData.lastTime}`;
+      } else if (priceData.updateTime) {
+        const parts = priceData.updateTime.split(' ');
+        if (parts.length >= 2) {
+          const datePart = parts[0].split('/').slice(0, 2).join('/');
+          currentTimeLabel = `${datePart} ${parts[1]}`;
+        } else {
+          currentTimeLabel = priceData.updateTime;
+        }
+      } else {
+        currentTimeLabel = priceData.lastTime || '';
+      }
+      
       priceHistory.push(currentProductPrice);
-      timeLabels.push(priceData.lastTime || priceData.updateTime?.split(' ')[1] || '');
+      timeLabels.push(currentTimeLabel);
     }
   }
   
-  // Tính toán cho chart - dải dài, thấp (tăng height để có chỗ cho thời gian)
-  const chartWidth = 500;
-  const chartHeight = 70; // Tăng từ 50 lên 70 để có chỗ cho thời gian
-  const chartPadding = 10;
+  // Tính toán cho chart - full width trên nền xanh dương, cao hơn để sát mép
+  const chartWidth = 680; // Full width của table (720px - padding 20px mỗi bên)
+  const chartHeight = 160; // Tăng chiều cao để sát mép trên và dưới
+  const chartPadding = 20; // Tăng padding để khung giá không bị lọt ra
   const chartInnerWidth = chartWidth - chartPadding * 2;
   const chartInnerHeight = chartHeight - chartPadding * 2 - 15; // Trừ thêm 15px cho phần thời gian
   
@@ -137,8 +325,13 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
       }
     
       // Tạo SVG path cho line chart - scale theo phần trăm thay đổi
+      // Điều chỉnh để khung giá đầu và cuối không bị lọt ra ngoài
+      const badgeMargin = 60; // Khoảng cách tối thiểu từ lề để khung giá không bị lọt ra
+      const effectiveInnerWidth = chartInnerWidth - badgeMargin * 2; // Chiều rộng hiệu dụng
+      
       const points = priceHistory.map((price, index) => {
-        const x = chartPadding + (index / (priceHistory.length - 1)) * chartInnerWidth;
+        // Tính x với margin để điểm đầu và cuối không sát lề
+        const x = chartPadding + badgeMargin + (index / (priceHistory.length - 1)) * effectiveInnerWidth;
         const changePercent = priceChanges[index];
         // Scale từ displayMin đến displayMax
         const range = displayMax - displayMin;
@@ -188,9 +381,9 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
       const areaPath = `${svgPath} L ${points[points.length - 1].x} ${chartHeight - chartPadding} L ${points[0].x} ${chartHeight - chartPadding} Z`;
     
       chartHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center;">
+        <div style="display: flex; flex-direction: column; align-items: stretch; width: 100%;">
           <div class="chart-container">
-          <svg class="chart-svg" viewBox="0 0 ${chartWidth} ${chartHeight}" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
+          <svg class="chart-svg" viewBox="0 0 ${chartWidth} ${chartHeight}" xmlns="http://www.w3.org/2000/svg" style="overflow: visible; width: 100%;">
             <defs>
               <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" style="stop-color:${overallLineColor};stop-opacity:0.3" />
@@ -202,8 +395,8 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
             <rect x="${chartPadding}" y="${chartPadding}" width="${chartInnerWidth}" height="${chartInnerHeight}" fill="rgba(255,255,255,0.1)"/>
             
             <!-- Grid lines (horizontal) - màu sáng hơn để thấy trên nền xanh dương -->
-            ${Array.from({ length: 3 }, (_, i) => {
-              const y = chartPadding + (i * chartInnerHeight / 2);
+            ${Array.from({ length: 4 }, (_, i) => {
+              const y = chartPadding + (i * chartInnerHeight / 3);
               return `<line x1="${chartPadding}" y1="${y}" x2="${chartWidth - chartPadding}" y2="${y}" stroke="rgba(255,255,255,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
             }).join('')}
             
@@ -276,14 +469,14 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
               <text x="${point.x}" y="${point.y - bgHeight/2 + 1}" font-size="${textFontSize}" font-weight="900" fill="${textColor}" text-anchor="middle">${priceText}</text>
               
               <!-- Thời gian - màu trắng để nổi bật trên nền xanh dương -->
-              <text x="${point.x}" y="${chartHeight - 5}" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle" opacity="0.95">${timeLabels[index] || ''}</text>
+              <text x="${point.x}" y="${chartHeight - 5}" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle" opacity="0.95">${timeLabels[index] || ''}</text>
             `;
             }).join('')}
           </svg>
           </div>
           <!-- Chú thích xu hướng - căn giữa dưới chart -->
           <div style="text-align: center; margin-top: 4px; width: 100%;">
-            <span style="font-size: 9px; font-weight: 600; color: ${trendColor}; opacity: 0.95;">${trendText}</span>
+            <span style="font-size: 9px; font-weight: 600; color: ${trendColor}; opacity: 0.9;">${trendText}</span>
           </div>
         </div>
     `;
@@ -330,8 +523,13 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
     }, {} as Record<string, typeof allProducts>);
 
     Object.entries(productsByCategory).forEach(([categoryName, products]) => {
-      // Category header row - phân biệt màu theo category
-      const categoryClass = categoryName.includes('PHÚ QUÝ') ? 'category-header-phuquy' : 'category-header-khac';
+      // Bỏ qua category "KHÁC" - không hiển thị
+      if (!categoryName.includes('PHÚ QUÝ')) {
+        return;
+      }
+      
+      // Category header row - chỉ hiển thị PHÚ QUÝ
+      const categoryClass = 'category-header-phuquy';
       tableRows += `
         <tr class="category-header ${categoryClass}">
           <td colspan="4" class="category-cell">${categoryName}</td>
@@ -343,16 +541,35 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
         const buyPriceFormatted = formatNumber(product.buyPrice);
         const sellPriceFormatted = product.sellPrice > 0 ? formatNumber(product.sellPrice) : '-';
         const productUnit = product.unit || unitDisplay;
+        
+        // Transform tên sản phẩm nếu cần
+        let displayProductName = product.productName;
+        if (displayProductName.includes('BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG')) {
+          displayProductName = 'BẠC THỎI PHÚ QUÝ 999 5 LƯỢNG';
+        }
 
         tableRows += `
           <tr>
-            <td>${product.productName}</td>
+            <td>${displayProductName}</td>
             <td class="unit-cell">${productUnit}</td>
             <td class="price-buy">${buyPriceFormatted}</td>
             <td class="price-sell">${sellPriceFormatted}</td>
           </tr>
         `;
       });
+      
+      // Thêm chart vào sau các sản phẩm PHÚ QUÝ
+      if (chartHTML) {
+        tableRows += `
+          <tr>
+            <td colspan="4" style="padding: 0; background: #1e3c72;">
+              <div class="chart-section" style="padding: 4px 20px; overflow: hidden;">
+                ${chartHTML}
+              </div>
+            </td>
+          </tr>
+        `;
+      }
     });
   }
 
@@ -423,18 +640,18 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           align-items:center;
         }
         .header-center .time{
-          font-size:18px;
+          font-size:30px;
           font-weight:700;
           color:#d4af37;
           line-height:1;
         }
         .header-center .date-label{
-          font-size:9px;
+          font-size:15px;
           color:#b0c4de;
           margin-top:1px;
         }
         .header-center .date{
-          font-size:9px;
+          font-size:15px;
           color:#b0c4de;
         }
         .header-right{
@@ -457,18 +674,20 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
         .chart-section{
           width:100%;
           display:flex;
-          justify-content:center;
-          padding:8px 0;
+          justify-content:stretch;
+          padding:4px 20px;
           background:#1e3c72;
+          overflow:hidden;
         }
         .chart-container{
-          width:500px;
-          height:70px;
+          width:100%;
+          height:160px;
           background:transparent;
           border-radius:4px;
-          padding:4px;
+          padding:2px;
           box-shadow:none;
           border:none;
+          overflow:hidden;
         }
         .chart-svg{
           width:100%;
@@ -553,8 +772,9 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           display:flex;
           justify-content:center;
           align-items:center;
-          padding:10px 16px 14px;
-          font-size:12px;
+          padding:8px 16px 10px;
+          font-size:10px;
+          line-height:1.4;
           color:#666;
           border-top:2px solid #d4af37;
           background:#f8f9fa;
@@ -569,7 +789,7 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
         <div class="header">
           <div class="header-left">
             ${logoBase64 ? `<img src="${logoBase64}" alt="Logo">` : ''}
-            <div class="brand">VÀNG BẠC VINH HOA</div>
+            <div class="brand">VINH HOA</div>
           </div>
           <div class="header-center">
             <div class="title">GIÁ BẠC HÔM NAY</div>
@@ -581,15 +801,9 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
           </div>
           <div class="header-right">
             ${phuQuyLogoBase64 ? `<img src="${phuQuyLogoBase64}" alt="Logo Phú Quý">` : ''}
-            <div class="brand">VÀNG BẠC PHÚ QUÝ</div>
+            <div class="brand">PHÚ QUÝ</div>
           </div>
         </div>
-        
-        ${chartHTML ? `
-        <div class="chart-section">
-          ${chartHTML}
-        </div>
-        ` : ''}
 
         <!-- TABLE -->
         <table>
@@ -608,7 +822,10 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
 
         <!-- FOOTER -->
         <div class="footer">
-          <span>Đơn giá đã bao gồm thuế GTGT</span>
+          <span style="font-weight: 600; display: inline-block; text-align: center; line-height: 1.5;">
+            <strong>VÀNG BẠC VINH HOA</strong> - Đại lý uỷ quyền chính hãng Tập đoàn vàng bạc Phú Quý<br>
+            Mã số thuế: ..... | Địa chỉ: 338 Thích Quảng Đức, P. Thủ Dầu Một, TP. Hồ Chí Minh | Hotline: xxxxx
+          </span>
         </div>
 
       </div>

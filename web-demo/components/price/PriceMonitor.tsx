@@ -189,19 +189,34 @@ export default function PriceMonitor({ sessionId }: { sessionId: string }) {
 
       // Cập nhật currentPrice để preview hiển thị
       if (previewData.currentPrice) {
-        // Tạo PriceData từ preview data
-        const testPriceData: PriceData = {
-          buyPrice: previewData.currentPrice.buyPrice,
-          sellPrice: previewData.currentPrice.buyPrice + 72000, // Giả sử spread
-          unit: 'Vnđ/Lượng',
-          updateTime: `${previewData.currentPrice.lastTime || '12:00'}`,
-          lastDate: '13/12/2025',
-          lastTime: previewData.currentPrice.lastTime || '12:00',
-          allProducts: [],
-        };
-        setCurrentPrice(testPriceData);
-        setPriceChange({ hasChanged: true });
-        toast.success(`📊 Chart đã hiển thị với ${previewData.historyCount} giá!`);
+        // API đã trả về toàn bộ currentPrice với allProducts
+        if (previewData.currentPrice.allProducts && previewData.currentPrice.allProducts.length > 0) {
+          setCurrentPrice(previewData.currentPrice);
+          setPriceChange({ hasChanged: true });
+          toast.success(`📊 Chart đã hiển thị với ${previewData.historyCount} giá!`);
+        } else {
+          // Fallback: Tạo PriceData từ preview data với allProducts
+          const testPriceData: PriceData = {
+            buyPrice: previewData.currentPrice.buyPrice,
+            sellPrice: previewData.currentPrice.sellPrice || previewData.currentPrice.buyPrice + 72000,
+            unit: previewData.currentPrice.unit || 'Vnđ/Lượng',
+            updateTime: previewData.currentPrice.updateTime || `13/12/2025 ${previewData.currentPrice.lastTime || '12:00'}`,
+            lastDate: previewData.currentPrice.lastDate || '13/12/2025',
+            lastTime: previewData.currentPrice.lastTime || '12:00',
+            allProducts: [
+              {
+                productName: 'BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG',
+                buyPrice: previewData.currentPrice.buyPrice,
+                sellPrice: previewData.currentPrice.sellPrice || previewData.currentPrice.buyPrice + 72000,
+                unit: 'Vnđ/Lượng',
+                category: 'BẠC THƯƠNG HIỆU PHÚ QUÝ',
+              },
+            ],
+          };
+          setCurrentPrice(testPriceData);
+          setPriceChange({ hasChanged: true });
+          toast.success(`📊 Chart đã hiển thị với ${previewData.historyCount} giá!`);
+        }
       }
     } catch (err) {
       toast.error('Có lỗi xảy ra khi tạo dữ liệu test');

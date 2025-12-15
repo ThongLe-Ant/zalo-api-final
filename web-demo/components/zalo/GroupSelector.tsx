@@ -46,31 +46,52 @@ export default function GroupSelector({ sessionId }: GroupSelectorProps) {
       
       if (!response.ok) {
         let errorMsg = 'Không thể lấy danh sách nhóm';
-        let errorData: any = {};
+        let errorData: any = null;
+        let responseText = '';
         
         try {
-          const text = await response.text();
-          if (text) {
-            errorData = JSON.parse(text);
-            errorMsg = errorData.error || errorData.message || errorMsg;
+          responseText = await response.text();
+          if (responseText) {
+            try {
+              errorData = JSON.parse(responseText);
+              errorMsg = errorData.error || errorData.message || errorMsg;
+            } catch (parseError) {
+              // Nếu không parse được JSON, dùng text trực tiếp
+              errorMsg = responseText || response.statusText || `HTTP ${response.status}`;
+            }
+          } else {
+            // Response body rỗng
+            errorMsg = response.statusText || `HTTP ${response.status}`;
           }
-        } catch (parseError) {
-          // Nếu không parse được JSON, dùng status text
+        } catch (readError) {
+          // Lỗi khi đọc response
           errorMsg = response.statusText || `HTTP ${response.status}`;
-          console.error('API Error (non-JSON):', errorMsg);
+          console.error('Error reading response:', readError);
         }
         
-        console.error('API Error:', {
+        // Chỉ log error object nếu có dữ liệu hữu ích
+        const errorLog: any = {
           status: response.status,
           statusText: response.statusText,
           error: errorMsg,
-          debug: errorData.debug,
-          fullData: errorData
-        });
+        };
+        
+        if (errorData) {
+          if (errorData.debug) {
+            errorLog.debug = errorData.debug;
+          }
+          if (Object.keys(errorData).length > 0) {
+            errorLog.responseData = errorData;
+          }
+        } else if (responseText) {
+          errorLog.responseText = responseText;
+        }
+        
+        console.error('API Error:', errorLog);
         
         // Hiển thị error message với debug info nếu có
         let displayError = errorMsg;
-        if (errorData.debug) {
+        if (errorData?.debug) {
           if (errorData.debug.availableSessions) {
             displayError += `\nCác session có sẵn: ${errorData.debug.availableSessions.join(', ') || 'Không có'}`;
           }

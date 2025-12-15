@@ -538,15 +538,27 @@ export async function createPriceImageHTML(priceData: PriceData, priceChange: Pr
 
       // Product rows
       products.forEach((product) => {
-        const buyPriceFormatted = formatNumber(product.buyPrice);
-        const sellPriceFormatted = product.sellPrice > 0 ? formatNumber(product.sellPrice) : '-';
-        const productUnit = product.unit || unitDisplay;
-        
         // Transform tên sản phẩm nếu cần
         let displayProductName = product.productName;
         if (displayProductName.includes('BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG')) {
           displayProductName = 'BẠC THỎI PHÚ QUÝ 999 5 LƯỢNG';
         }
+
+        // Giá gốc
+        let buyPriceValue = product.buyPrice;
+        let sellPriceValue = product.sellPrice;
+
+        // Riêng sản phẩm BẠC THỎI PHÚ QUÝ 999 5 LƯỢNG thì hiển thị giá nhân 5
+        if (displayProductName === 'BẠC THỎI PHÚ QUÝ 999 5 LƯỢNG') {
+          buyPriceValue = buyPriceValue * 5;
+          if (sellPriceValue && sellPriceValue > 0) {
+            sellPriceValue = sellPriceValue * 5;
+          }
+        }
+
+        const buyPriceFormatted = formatNumber(buyPriceValue);
+        const sellPriceFormatted = sellPriceValue > 0 ? formatNumber(sellPriceValue) : '-';
+        const productUnit = product.unit || unitDisplay;
 
         tableRows += `
           <tr>

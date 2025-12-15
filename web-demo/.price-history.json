@@ -1,126 +1,274 @@
 {
   "prices": [
     {
-      "buyPrice": 2279000,
-      "sellPrice": 2351000,
-      "unit": "Vnđ/Lượng",
-      "updateTime": "13/12/2025 08:00",
-      "lastDate": "13/12/2025",
-      "lastTime": "08:00",
-      "timestamp": 1765769006755,
-      "allProducts": [
-        {
-          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
-          "buyPrice": 2279000,
-          "sellPrice": 2351000,
-          "unit": "Vnđ/Lượng",
-          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
-        }
-      ]
-    },
-    {
-      "buyPrice": 2309000,
-      "sellPrice": 2381000,
-      "unit": "Vnđ/Lượng",
-      "updateTime": "13/12/2025 10:00",
-      "lastDate": "13/12/2025",
-      "lastTime": "10:00",
-      "timestamp": 1765772606755,
-      "allProducts": [
-        {
-          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
-          "buyPrice": 2309000,
-          "sellPrice": 2381000,
-          "unit": "Vnđ/Lượng",
-          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
-        }
-      ]
-    },
-    {
-      "buyPrice": 2319000,
-      "sellPrice": 2391000,
-      "unit": "Vnđ/Lượng",
-      "updateTime": "13/12/2025 11:00",
-      "lastDate": "13/12/2025",
-      "lastTime": "11:00",
-      "timestamp": 1765774406755,
-      "allProducts": [
-        {
-          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
-          "buyPrice": 2319000,
-          "sellPrice": 2391000,
-          "unit": "Vnđ/Lượng",
-          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
-        }
-      ]
-    },
-    {
-      "buyPrice": 2329000,
-      "sellPrice": 2401000,
-      "unit": "Vnđ/Lượng",
-      "updateTime": "13/12/2025 12:00",
-      "lastDate": "13/12/2025",
-      "lastTime": "12:00",
-      "timestamp": 1765776206755,
-      "allProducts": [
-        {
-          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
-          "buyPrice": 2329000,
-          "sellPrice": 2401000,
-          "unit": "Vnđ/Lượng",
-          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
-        }
-      ]
-    },
-    {
       "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
-      "buyPrice": 2357000,
-      "sellPrice": 2430000,
+      "buyPrice": 2399000,
+      "sellPrice": 2473000,
       "unit": "Vnđ/Lượng",
       "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
-      "updateTime": "15/12/2025 11:43",
+      "updateTime": "15/12/2025 16:22",
       "lastDate": "15/12/2025",
-      "lastTime": "11:43",
-      "timestamp": 1765776764078,
+      "lastTime": "16:22",
+      "timestamp": 1765792480972,
       "allProducts": [
         {
           "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
-          "buyPrice": 2357000,
-          "sellPrice": 2430000,
+          "buyPrice": 2399000,
+          "sellPrice": 2473000,
           "unit": "Vnđ/Lượng",
           "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
         },
         {
           "productName": "BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG",
-          "buyPrice": 2357000,
-          "sellPrice": 2430000,
+          "buyPrice": 2399000,
+          "sellPrice": 2473000,
           "unit": "Vnđ/Lượng",
           "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
         },
         {
           "productName": "ĐỒNG BẠC MỸ NGHỆ PHÚ QUÝ 999",
-          "buyPrice": 2357000,
-          "sellPrice": 2773000,
+          "buyPrice": 2399000,
+          "sellPrice": 2822000,
           "unit": "Vnđ/Lượng",
           "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
         },
         {
           "productName": "BẠC THỎI PHÚ QUÝ 999 1KILO",
-          "buyPrice": 62853176,
-          "sellPrice": 64799838,
+          "buyPrice": 63973173,
+          "sellPrice": 65946502,
           "unit": "Vnđ/Kg",
           "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
         },
         {
           "productName": "Bạc 999 trên 500 lượng (miếng-thanh-thỏi)",
-          "buyPrice": 1994000,
+          "buyPrice": 2029000,
           "sellPrice": 0,
           "unit": "Vnđ/Lượng",
           "category": "BẠC THƯƠNG HIỆU KHÁC"
         },
         {
           "productName": "Bạc 999 dưới 500 lượng  (miếng-thanh-thỏi)",
-          "buyPrice": 1994000,
+          "buyPrice": 2029000,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        }
+      ]
+    },
+    {
+      "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+      "buyPrice": 2397000,
+      "sellPrice": 2471000,
+      "unit": "Vnđ/Lượng",
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "updateTime": "15/12/2025 16:55",
+      "lastDate": "15/12/2025",
+      "lastTime": "16:55",
+      "timestamp": 1765792781053,
+      "allProducts": [
+        {
+          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+          "buyPrice": 2397000,
+          "sellPrice": 2471000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG",
+          "buyPrice": 2397000,
+          "sellPrice": 2471000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "ĐỒNG BẠC MỸ NGHỆ PHÚ QUÝ 999",
+          "buyPrice": 2397000,
+          "sellPrice": 2820000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 1KILO",
+          "buyPrice": 63919840,
+          "sellPrice": 65893169,
+          "unit": "Vnđ/Kg",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "Bạc 999 trên 500 lượng (miếng-thanh-thỏi)",
+          "buyPrice": 2028000,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        },
+        {
+          "productName": "Bạc 999 dưới 500 lượng  (miếng-thanh-thỏi)",
+          "buyPrice": 2028000,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        }
+      ]
+    },
+    {
+      "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+      "buyPrice": 2399000,
+      "sellPrice": 2473000,
+      "unit": "Vnđ/Lượng",
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "updateTime": "15/12/2025 17:04",
+      "lastDate": "15/12/2025",
+      "lastTime": "17:04",
+      "timestamp": 1765794281016,
+      "allProducts": [
+        {
+          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+          "buyPrice": 2399000,
+          "sellPrice": 2473000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG",
+          "buyPrice": 2399000,
+          "sellPrice": 2473000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "ĐỒNG BẠC MỸ NGHỆ PHÚ QUÝ 999",
+          "buyPrice": 2399000,
+          "sellPrice": 2822000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 1KILO",
+          "buyPrice": 63973173,
+          "sellPrice": 65946502,
+          "unit": "Vnđ/Kg",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "Bạc 999 trên 500 lượng (miếng-thanh-thỏi)",
+          "buyPrice": 2029000,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        },
+        {
+          "productName": "Bạc 999 dưới 500 lượng  (miếng-thanh-thỏi)",
+          "buyPrice": 2029000,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        }
+      ]
+    },
+    {
+      "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+      "buyPrice": 2395000,
+      "sellPrice": 2469000,
+      "unit": "Vnđ/Lượng",
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "updateTime": "15/12/2025 17:31",
+      "lastDate": "15/12/2025",
+      "lastTime": "17:31",
+      "timestamp": 1765795878223,
+      "allProducts": [
+        {
+          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+          "buyPrice": 2395000,
+          "sellPrice": 2469000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG",
+          "buyPrice": 2395000,
+          "sellPrice": 2469000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "ĐỒNG BẠC MỸ NGHỆ PHÚ QUÝ 999",
+          "buyPrice": 2395000,
+          "sellPrice": 2818000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 1KILO",
+          "buyPrice": 63866507,
+          "sellPrice": 65839835,
+          "unit": "Vnđ/Kg",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "Bạc 999 trên 500 lượng (miếng-thanh-thỏi)",
+          "buyPrice": 2026000,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        },
+        {
+          "productName": "Bạc 999 dưới 500 lượng  (miếng-thanh-thỏi)",
+          "buyPrice": 2026000,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        }
+      ]
+    },
+    {
+      "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+      "buyPrice": 2398000,
+      "sellPrice": 2472000,
+      "unit": "Vnđ/Lượng",
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "updateTime": "15/12/2025 17:55",
+      "lastDate": "15/12/2025",
+      "lastTime": "17:55",
+      "timestamp": 1765811461023,
+      "allProducts": [
+        {
+          "productName": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+          "buyPrice": 2398000,
+          "sellPrice": 2472000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG",
+          "buyPrice": 2398000,
+          "sellPrice": 2472000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "ĐỒNG BẠC MỸ NGHỆ PHÚ QUÝ 999",
+          "buyPrice": 2398000,
+          "sellPrice": 2821000,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "BẠC THỎI PHÚ QUÝ 999 1KILO",
+          "buyPrice": 63946507,
+          "sellPrice": 65919835,
+          "unit": "Vnđ/Kg",
+          "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ"
+        },
+        {
+          "productName": "Bạc 999 trên 500 lượng (miếng-thanh-thỏi)",
+          "buyPrice": 2029060,
+          "sellPrice": 0,
+          "unit": "Vnđ/Lượng",
+          "category": "BẠC THƯƠNG HIỆU KHÁC"
+        },
+        {
+          "productName": "Bạc 999 dưới 500 lượng  (miếng-thanh-thỏi)",
+          "buyPrice": 2029060,
           "sellPrice": 0,
           "unit": "Vnđ/Lượng",
           "category": "BẠC THƯƠNG HIỆU KHÁC"
